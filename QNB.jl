@@ -1,23 +1,18 @@
-# Quasi-Newton Update Function
-
-function quasi_newton_update(B, g, s, y; method::Symbol=:BFGS)
-    if method == :BFGS
-        # BFGS update
-        ρ = 1.0 / (y' * s)
-        B = (I - ρ * s * y') * B * (I - ρ * y * s') + ρ * s * s'
-    elseif method == :DFP
-        # DFP update
-        ρ = 1.0 / (y' * s)
-        B = B + (1 + (y' * B * y) / (y' * s)) * (s * s') / (y' * s) - (B * y * s' + s * y' * B) / (y' * s)
-    elseif method == :SR1
-        # SR1 update with positive definiteness test and line skipping
-        if (y' * s) > 1e-10  # check the test condition
-            B = B + (y - B * s) * (y' - s' * B) / (y' * s)
+function QNB(B, s, y, method)    # B: current approximation to the Hessian, s: step vector, y: gradient difference, method: 'SR1', 'DFP', 'BFGS', or 'PSB'
+    if method == "SR1"
+        if (y - B*s) * (y - B*s)' < 1e-10
+            println("Skipping update due to near-zero value.")
+            return
         end
-    elseif method == :PSB
-        # Implement PSB update logic (requires specific details)
+        B += (y - B*s) * (y - B*s)' / (s' * (y - B*s))
+    elseif method == "DFP"
+        B += (s*s') / (s' * y) - (B * y * y' * B) / (y' * B * y)
+    elseif method == "BFGS"
+        B += (s*s') / (s' * y) - (B * y * y' * B) / (y' * B * y)
+    elseif method == "PSB"
+        B += (y - B*s) * (y - B*s)' / (s' * s) - (s' * (y - B*s) * s * s') / (s' * s)^2
     else
-        error("Invalid method specified. Use :BFGS, :DFP, :SR1, or :PSB.")
+        error("Invalid method. Use 'SR1', 'DFP', 'BFGS', or 'PSB'.")
     end
     return B
 end
